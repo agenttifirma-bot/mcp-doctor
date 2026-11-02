@@ -44,6 +44,11 @@ inputs:
     required: false
     default: ""
 
+  sarif:
+    description: Polku, johon löydökset kirjoitetaan SARIF 2.1.0 -tiedostona (esim. mcp-doctor.sarif). Tiedoston voi ladata github/codeql-action/upload-sarif-askeleella. Julkaisematon ominaisuus.
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
@@ -68,6 +73,7 @@ runs:
         INPUT_ENV_NAMES: ${{ inputs.env-names }}
         INPUT_MAX_TOKENS: ${{ inputs.max-tokens }}
         INPUT_AUTH: ${{ inputs.auth }}
+        INPUT_SARIF: ${{ inputs.sarif }}
       run: |
         # Syötteet välitetään ympäristömuuttujina, ei suoraan komentoriville (ei komentoinjektiota).
         args=()
@@ -75,6 +81,7 @@ runs:
         [ -n "$INPUT_SMOKE" ] && args+=(--smoke "$INPUT_SMOKE")
         args+=(--timeout-ms "$INPUT_TIMEOUT")
         [ -n "$INPUT_MAX_TOKENS" ] && args+=(--max-tokens "$INPUT_MAX_TOKENS")
+        [ -n "$INPUT_SARIF" ] && args+=(--sarif "$INPUT_SARIF")
         if [ -n "$INPUT_URL" ]; then
           [ -n "$INPUT_COMMAND" ] && { echo "Anna joko command tai url, ei molempia" >&2; exit 2; }
           [ -n "$INPUT_ENV_NAMES" ] && { echo "env-names koskee vain command-palvelinta" >&2; exit 2; }

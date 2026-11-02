@@ -55,3 +55,23 @@ describe("action.yml (GitHub Marketplace)", () => {
     }
   });
 });
+
+describe("action.yml: sarif-syöte", () => {
+  it("syöte välitetään ympäristömuuttujana ja --sarif-valintana", () => {
+    expect(yml).toMatch(/^ {2}sarif:\n {4}description: .+/m);
+    expect(yml).toContain("INPUT_SARIF: ${{ inputs.sarif }}");
+    expect(yml).toContain('--sarif "$INPUT_SARIF"');
+  });
+
+  it("esimerkkityönkulku lataa SARIFin upload-sarif-askeleella myös virheen jälkeen", () => {
+    const esim = lue("examples/workflow-sarif.yml");
+    const d = parse(esim) as { permissions: Record<string, string>; jobs: { check: { steps: { uses?: string; if?: string; with?: Record<string, string> }[] } } };
+    expect(d.permissions["security-events"]).toBe("write");
+    const askeleet = d.jobs.check.steps;
+    const doctor = askeleet.find((s) => s.uses?.startsWith("tonyweckstrom1987/mcp-doctor@"))!;
+    const lataus = askeleet.find((s) => s.uses?.startsWith("github/codeql-action/upload-sarif@"))!;
+    expect(doctor.with?.sarif).toBe("mcp-doctor.sarif");
+    expect(lataus.with?.sarif_file).toBe("mcp-doctor.sarif");
+    expect(lataus.if).toBe("always()");
+  });
+});

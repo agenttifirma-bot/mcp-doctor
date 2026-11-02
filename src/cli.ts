@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { authCheck } from "./auth.js";
 import { redactArgs } from "./redact.js";
+import { formatSarif } from "./sarif.js";
 import { formatJson, formatText, summarize } from "./report.js";
 import { diagnose } from "./runner.js";
 import { parseSmokeSpec } from "./smoke.js";
@@ -21,6 +22,7 @@ export interface CliIo {
   stderr: (s: string) => void;
   env: Record<string, string | undefined>;
   readFile: (path: string) => string;
+  writeFile: (path: string, content: string) => void;
 }
 
 export const USAGE = `mcp-doctor - MCP-palvelimen terveystarkastus
@@ -32,6 +34,7 @@ Käyttö:
 Valinnat:
   --smoke <tiedosto>     savuajo: kutsuu vain tiedostossa nimetyt työkalut
   --json                 tulosta raportti JSONina
+  --sarif <tiedosto>     kirjoita löydökset SARIF 2.1.0 -tiedostoon (GitHub code scanning, julkaisematon ominaisuus)
   --strict               varoituksetkin kaatavat ajon (exit 1)
   --timeout-ms <luku>    yksittäisen pyynnön aikakatkaisu, oletus 10000
   --max-tokens <luku>    tokenimittarin raja: työkalumäärittelyjen arvioitu yhteiskoko ei saa ylittää tätä (ylitys on virhe)
@@ -52,7 +55,7 @@ interface Args {
 }
 
 const BOOL_FLAGS = new Set(["json", "strict", "help", "version", "auth"]);
-const VALUE_FLAGS = new Set(["smoke", "timeout-ms", "env", "bearer-env", "url", "max-tokens"]);
+const VALUE_FLAGS = new Set(["smoke", "timeout-ms", "env", "bearer-env", "url", "max-tokens", "sarif"]);
 
 function parseArgs(argv: string[]): Args {
   const flags = new Map<string, string[]>();
@@ -123,6 +126,8 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       smoke = parseSmokeSpec(text);
     }
 
+    const sarifPath = one(args, "sarif");
+
     if (args.bools.has("auth") && url === undefined) throw new UsageError("--auth koskee vain --url-palvelinta");
 
     let transport: Transport;
@@ -184,6 +189,13 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       const summary = summarize(findings);
       report = { ...report, findings, summary, ok: summary.errors === 0 && (!strict || summary.warnings === 0) };
     }
+    if (sarifPath !== undefined) {
+      try {
+        io.writeFile(sarifPath, formatSarif(report));
+      } catch {
+        throw new UsageError(`SARIF-tiedostoa '${sarifPath}' ei voi kirjoittaa`);
+      }
+    }
     io.stdout(args.bools.has("json") ? formatJson(report) : formatText(report));
     return report.ok ? EXIT_OK : EXIT_FINDINGS;
   } catch (err) {
@@ -215,5 +227,6 @@ export function realIo(): CliIo {
     stderr: (s) => process.stderr.write(s),
     env: process.env,
     readFile: (p) => readFileSync(p, "utf8"),
+    writeFile: (p, c) => writeFileSync(p, c, "utf8"),
   };
 }
