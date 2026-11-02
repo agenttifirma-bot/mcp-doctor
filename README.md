@@ -173,6 +173,7 @@ No legacy SSE transport. `--auth` checks the OAuth configuration but does not lo
 ## More
 
 - [docs/demo.md](docs/demo.md): three-minute before/after demo (`npm run demo:ennen`, `npm run demo:jalkeen`), English included.
+- Free health check for your MCP server: [open a request](../../issues/new?template=health-check.yml). The server is run in an isolated sandbox and the findings are posted after manual review.
 - [CHANGELOG.md](CHANGELOG.md), [README.fi.md](README.fi.md) (full documentation in Finnish, including a comparison with other MCP testing tools).
 
 ## Development

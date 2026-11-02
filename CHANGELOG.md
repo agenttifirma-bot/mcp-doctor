@@ -4,6 +4,10 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 
 ## [Julkaisematon]
 
+### Lisätty
+
+- Issue-lomake `health-check.yml`: MCP-palvelimen tekijä voi pyytää ilmaisen terveystarkastuksen. Lomake kysyy repon osoitteen, käynnistyskomennon, haluttaanko julkinen vastaus ja suostumuksen eristettyyn ajoon. Vastaukset hyväksytään käsin ennen lähettämistä.
+
 ## [0.5.0] - 2026-11-02
 
 ### Lisätty
