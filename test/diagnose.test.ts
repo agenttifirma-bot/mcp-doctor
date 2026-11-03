@@ -222,3 +222,47 @@ describe("diagnose: työkalulistaus", () => {
     expect(f?.message).toContain("työkalulistaa ei saatu");
   });
 });
+
+describe("diagnose: kokonaisaikaraja (--total-timeout-ms)", () => {
+  const runTotal = (smoke: SmokeCall[], totalTimeoutMs: number | undefined, timeoutMs = 10000) => {
+    const transport = new StdioClientTransport({ command: NODE, args: [fixture("good-server.mjs")], stderr: "pipe" });
+    return diagnose({ transport, target: "good", smoke, timeoutMs, totalTimeoutMs, strict: false });
+  };
+
+  it("monta hidasta kutsua: pyyntökohtainen raja ei laukea, kokonaisraja laukeaa ja loput ohitetaan", async () => {
+    const t0 = Date.now();
+    const smoke = [call("slow", { ms: 1500 }), call("slow", { ms: 1500 }), call("slow", { ms: 1500 }), call("greet", { name: "Tony" })];
+    const r = await runTotal(smoke, 2500);
+    const ids = r.findings.map((f) => f.id);
+    expect(ids).toContain("TOTAL_TIMEOUT");
+    expect(ids.filter((x) => x === "TOTAL_TIMEOUT")).toHaveLength(1);
+    expect(r.ok).toBe(false);
+    // ensimmäinen kutsu onnistuu, toinen katkeaa kokonaisrajaan, loput ohitetaan mutta näkyvät tuloksissa
+    expect(r.smoke.map((s) => s.ok)).toEqual([true, false, false, false]);
+    expect(r.smoke).toHaveLength(4);
+    expect(Date.now() - t0).toBeLessThan(5000);
+    const f = r.findings.find((x) => x.id === "TOTAL_TIMEOUT");
+    expect(f?.message).toContain("2500 ms");
+    expect(f?.severity).toBe("error");
+  });
+
+  it("ilman kokonaisrajaa sama savuajo menee läpi (oletus ennallaan)", async () => {
+    const r = await runTotal([call("slow", { ms: 300 }), call("slow", { ms: 300 })], undefined);
+    expect(r.findings.map((f) => f.id)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("riittävä kokonaisraja ei tuota löydöksiä", async () => {
+    const r = await runTotal([call("slow", { ms: 200 }), call("greet", { name: "Tony" })], 8000);
+    expect(r.findings.map((f) => f.id)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("kokonaisraja ylittyy jo kättelyssä: CONNECT_FAILED ja TOTAL_TIMEOUT", async () => {
+    const r = await runTotal([call("greet", { name: "Tony" })], 1);
+    const ids = r.findings.map((f) => f.id);
+    expect(ids).toContain("CONNECT_FAILED");
+    expect(ids).toContain("TOTAL_TIMEOUT");
+    expect(r.ok).toBe(false);
+  });
+});

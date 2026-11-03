@@ -74,6 +74,7 @@ Yhteenveto: 0 virhettä, 0 varoitusta, 0 huomiota -> OK
 | `--json` | report as JSON |
 | `--strict` | warnings fail the run too |
 | `--timeout-ms <number>` | timeout for a single request, default 10000 |
+| `--total-timeout-ms <number>` | time limit for the whole check (handshake, listing and smoke calls together), no limit by default. Each request's timeout is the smaller of `--timeout-ms` and the time left. When the limit is hit, the remaining smoke calls are skipped and `TOTAL_TIMEOUT` is reported |
 | `--env <NAME>` | pass an environment variable to the stdio server (repeatable) |
 | `--bearer-env <NAME>` | read the HTTP server's Bearer token from this variable |
 | `--auth` | OAuth check, only together with `--url` (401, WWW-Authenticate, RFC 9728 and 8414 metadata, PKCE S256, refresh_token) |
@@ -119,6 +120,7 @@ Fields: `tool` (required), `arguments` (default `{}`), `expectError` (default `f
 | `SCHEMA_NESTED_DESC_MISSING` / `SCHEMA_NESTED_PROP_UNTYPED` | info | a property inside a nested object, array item or `anyOf`/`oneOf`/`allOf` branch has no description / type. The path is in the message, e.g. `entities[].name` |
 | `TOOL_TOKENS_HIGH` | info | a single tool definition costs an estimated more than 1,000 tokens |
 | `TOOLS_TOKEN_BUDGET_EXCEEDED` | error | the estimated total size of the tool definitions exceeds `--max-tokens` |
+| `TOTAL_TIMEOUT` | error | `--total-timeout-ms` was exceeded; the message tells which phase was interrupted and which smoke calls were skipped |
 | `AUTH_*` (`--auth`) | error / warning / info | OAuth: `AUTH_RESOURCE_METADATA_MISSING`, `AUTH_SERVERS_MISSING`, `AUTH_SERVER_METADATA_MISSING`, `AUTH_ENDPOINT_MISSING`, `AUTH_PKCE_S256_MISSING`, `AUTH_INSECURE_URL`, `AUTH_CHECK_FAILED`, `AUTH_RESOURCE_INVALID` (error); `AUTH_WWW_AUTHENTICATE_MISSING`, `AUTH_RESOURCE_MISMATCH`, `AUTH_REFRESH_TOKEN_UNSUPPORTED` (warning); `AUTH_RESOURCE_METADATA_HINT_MISSING`, `AUTH_REGISTRATION_UNSUPPORTED`, `AUTH_LOGIN_REQUIRED`, `AUTH_NOT_REQUIRED`, `AUTH_OK` (info) |
 | `OUTPUT_SCHEMA_NOT_OBJECT` | error | `outputSchema` is not an `object` |
 | `SMOKE_TOOL_NOT_FOUND` | error | the smoke file names a tool the server does not have |

@@ -35,6 +35,8 @@ Valinnat:
   --strict               varoituksetkin kaatavat ajon (exit 1)
   --timeout-ms <luku>    yksittäisen pyynnön aikakatkaisu, oletus 10000
   --max-tokens <luku>    tokenimittarin raja: työkalumäärittelyjen arvioitu yhteiskoko ei saa ylittää tätä (ylitys on virhe)
+  --total-timeout-ms <luku>
+                         koko tarkastuksen aikaraja (kättely, listaus ja savuajo), oletus ei rajaa
   --env <NIMI>           välitä ympäristömuuttuja stdio-palvelimelle (toistettava)
   --bearer-env <NIMI>    lue HTTP-palvelimen Bearer-token tästä ympäristömuuttujasta
   --auth                 HTTP-palvelimen OAuth-tarkistus: 401 ja WWW-Authenticate, resurssin ja valtuutuspalvelimen
@@ -52,7 +54,7 @@ interface Args {
 }
 
 const BOOL_FLAGS = new Set(["json", "strict", "help", "version", "auth"]);
-const VALUE_FLAGS = new Set(["smoke", "timeout-ms", "env", "bearer-env", "url", "max-tokens"]);
+const VALUE_FLAGS = new Set(["smoke", "timeout-ms", "env", "bearer-env", "url", "max-tokens", "total-timeout-ms"]);
 
 function parseArgs(argv: string[]): Args {
   const flags = new Map<string, string[]>();
@@ -110,6 +112,9 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
     const maxTokensRaw = one(args, "max-tokens");
     const maxTokens = maxTokensRaw === undefined ? undefined : Number(maxTokensRaw);
     if (maxTokens !== undefined && (!Number.isInteger(maxTokens) || maxTokens < 1)) throw new UsageError("--max-tokens täytyy olla positiivinen kokonaisluku");
+    const totalRaw = one(args, "total-timeout-ms");
+    const totalTimeoutMs = totalRaw === undefined ? undefined : Number(totalRaw);
+    if (totalTimeoutMs !== undefined && (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 1)) throw new UsageError("--total-timeout-ms täytyy olla positiivinen kokonaisluku");
 
     const smokePath = one(args, "smoke");
     let smoke;
@@ -170,7 +175,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
 
     const strict = args.bools.has("strict");
     const authFindings = args.bools.has("auth") && url !== undefined ? await authCheck(url, (u, init) => fetch(u, init), timeoutMs) : [];
-    let report = await diagnose({ transport, target, smoke, timeoutMs, strict, maxTokens, stderrTail });
+    let report = await diagnose({ transport, target, smoke, timeoutMs, totalTimeoutMs, strict, maxTokens, stderrTail });
     if (authFindings.length > 0) {
       // Kun palvelin vaati kirjautumisen (401) eikä tokenia annettu, kirjautumaton yhteys epäonnistuu odotetusti.
       // Se ei ole vika, joten CONNECT_FAILED muutetaan tiedoksi (muuten jokainen OAuth-palvelin näyttäisi rikkinäiseltä).

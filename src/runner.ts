@@ -13,6 +13,8 @@ export interface DiagnoseOptions {
   target: string;
   smoke?: SmokeCall[];
   timeoutMs: number;
+  /** Koko tarkastuksen aikaraja (kättely, listaus ja savuajo yhteensä). Puuttuessa vain pyyntökohtainen raja. */
+  totalTimeoutMs?: number;
   strict: boolean;
   /** Tokenimittarin raja (--max-tokens): ylitys on virhe. */
   maxTokens?: number;
@@ -50,13 +52,22 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
   // Huom: SDK:n asiakas tarkistaa itse outputSchema-vaatimuksen (puuttuva tai virheellinen structuredContent
   // heittää virheen), ja se näkyy löydöksenä SMOKE_CALL_FAILED.
   const client = new Client({ name: "mcp-doctor", version: VERSIO });
+  // Kokonaisaikaraja: jokaisen pyynnön aikakatkaisu on pienempi pyyntökohtaisesta rajasta ja jäljellä olevasta ajasta.
+  const deadline = opts.totalTimeoutMs !== undefined ? Date.now() + opts.totalTimeoutMs : undefined;
+  const overBudget = () => deadline !== undefined && Date.now() >= deadline;
+  const requestTimeout = () => (deadline === undefined ? opts.timeoutMs : Math.max(1, Math.min(opts.timeoutMs, deadline - Date.now())));
+  const markTotal = (what: string) => {
+    if (findings.some((f) => f.id === "TOTAL_TIMEOUT")) return;
+    findings.push({ id: "TOTAL_TIMEOUT", severity: "error", message: `kokonaisaikaraja ${opts.totalTimeoutMs} ms ylittyi: ${what}` });
+  };
   try {
     try {
-      await client.connect(opts.transport, { timeout: opts.timeoutMs });
+      await client.connect(opts.transport, { timeout: requestTimeout() });
     } catch (e) {
       const tail = opts.stderrTail?.().trim();
       const extra = tail ? ` | palvelimen stderr: ${short(tail)}` : "";
       findings.push({ id: "CONNECT_FAILED", severity: "error", message: `yhteys tai initialize-kättely epäonnistui: ${errText(e)}${extra}` });
+      if (overBudget()) markTotal("kättely ei valmistunut ajoissa");
       return build(opts, null, 0, findings, smokeResults);
     }
 
@@ -80,7 +91,13 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
       const seenCursors = new Set<string>();
       try {
         do {
-          const res = await client.listTools(cursor ? { cursor } : undefined, { timeout: opts.timeoutMs });
+          if (overBudget()) {
+            markTotal(`työkalulistaus keskeytettiin ${pages} sivun jälkeen`);
+            toolListMissing = true;
+            cursor = undefined;
+            break;
+          }
+          const res = await client.listTools(cursor ? { cursor } : undefined, { timeout: requestTimeout() });
           tools.push(...(res.tools as ToolLike[]));
           cursor = res.nextCursor;
           pages++;
@@ -97,6 +114,7 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
       } catch (e) {
         toolListMissing = true;
         findings.push({ id: "TOOLS_LIST_FAILED", severity: "error", message: `tools/list epäonnistui: ${errText(e)}` });
+        if (overBudget()) markTotal("tools/list ei valmistunut ajoissa");
       }
       if (tools.length === 0 && !findings.some((f) => f.id === "TOOLS_LIST_FAILED")) {
         findings.push({ id: "TOOLS_EMPTY", severity: "warning", message: "palvelin ilmoittaa tools-kyvyn mutta työkalulista on tyhjä" });
@@ -109,7 +127,15 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
     }
 
     const byName = new Map(tools.map((t) => [t.name, t]));
-    for (const call of opts.smoke ?? []) {
+    const calls = opts.smoke ?? [];
+    for (let i = 0; i < calls.length; i++) {
+      const call = calls[i];
+      if (overBudget()) {
+        const rest = calls.slice(i);
+        markTotal(`savuajosta ohitettiin ${rest.length} kutsua (${rest.map((c) => c.tool).join(", ")})`);
+        for (const c of rest) smokeResults.push({ tool: c.tool, ok: false, ms: 0 });
+        break;
+      }
       const tool = byName.get(call.tool);
       if (!tool) {
         const syy = toolListMissing
@@ -126,7 +152,7 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
         if (severity === "error") ok = false;
       };
       try {
-        const res = await client.callTool({ name: call.tool, arguments: call.arguments }, undefined, { timeout: opts.timeoutMs });
+        const res = await client.callTool({ name: call.tool, arguments: call.arguments }, undefined, { timeout: requestTimeout() });
         const ms = Date.now() - start;
         const isError = res.isError === true;
         if (isError && !call.expectError) fail("SMOKE_TOOL_ERROR", "error", `työkalu palautti virheen: ${firstText(res.content) || "(ei tekstiä)"}`);
@@ -146,6 +172,7 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
         } else {
           fail("SMOKE_CALL_FAILED", "error", `kutsu epäonnistui: ${errText(e)}`);
         }
+        if (overBudget()) markTotal(`savuajon kutsu ${call.tool} ei valmistunut ajoissa`);
         smokeResults.push({ tool: call.tool, ok, ms: Date.now() - start });
       }
     }
