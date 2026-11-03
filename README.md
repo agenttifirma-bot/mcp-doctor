@@ -129,6 +129,8 @@ Fields: `tool` (required), `arguments` (default `{}`), `expectError` (default `f
 | `SMOKE_EMPTY_RESULT` | warning | the result is empty |
 | `SMOKE_SLOW` | warning | the response took longer than `maxMs` (default 5000) |
 
+How to fix each finding, with before/after examples: [docs/fixes.md](docs/fixes.md).
+
 Nested schemas are checked up to 8 levels deep. The check is lightweight (structure, `required`, types, descriptions), not full JSON Schema validation, and `$ref` references are not followed.
 
 ## Token budget
