@@ -174,7 +174,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
     if (authFindings.length > 0) {
       // Kun palvelin vaati kirjautumisen (401) eikä tokenia annettu, kirjautumaton yhteys epäonnistuu odotetusti.
       // Se ei ole vika, joten CONNECT_FAILED muutetaan tiedoksi (muuten jokainen OAuth-palvelin näyttäisi rikkinäiseltä).
-      const loginRequired = !args.flags.has("bearer-env") && !authFindings.some((x) => x.id === "AUTH_NOT_REQUIRED" || x.id === "AUTH_CHECK_FAILED");
+      const loginRequired = !args.flags.has("bearer-env") && !authFindings.some((x) => x.id === "AUTH_NOT_REQUIRED" || x.id === "AUTH_FORBIDDEN" || x.id === "AUTH_CHECK_FAILED");
       const rest = loginRequired
         ? report.findings.map((x): Finding => (x.id === "CONNECT_FAILED"
           ? { id: "AUTH_LOGIN_REQUIRED", severity: "info", message: "palvelin vaatii kirjautumisen: varsinaista tarkastusta ei voi ajaa ilman tokenia (--bearer-env)" }

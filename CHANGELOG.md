@@ -4,6 +4,11 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 
 ## [Julkaisematon]
 
+### Muutettu
+
+- Kun HTTP-palvelin torjuu yhteyden tilalla 401 tai 403, `CONNECT_FAILED`-viesti nimeää tilan ja antaa vihjeen jatkotoimista (`--bearer-env`, `--auth`). Estoa ei yritetä kiertää.
+- `--auth` ei enää väitä kirjautumisen olevan tarpeeton, kun palvelin vastaa 403: uusi huomio `AUTH_FORBIDDEN` kertoo eston.
+
 ## [0.5.0] - 2026-11-02
 
 ### Lisätty
