@@ -26,6 +26,20 @@ function errText(e: unknown): string {
   return short(e instanceof Error ? e.message : String(e));
 }
 
+/** HTTP-tila, jos yhteysvirhe on SDK:n StreamableHTTPError (code = tilakoodi). Muu virhe ei anna tilaa. */
+function httpStatusOf(e: unknown): number | undefined {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "number" && Number.isInteger(code) && code >= 400 && code <= 599 ? code : undefined;
+}
+
+/** Selkeä vihje, kun palvelin esti pyynnön tilalla 401 tai 403. Ei ehdota eston kiertämistä. */
+function blockedHint(status: number): string {
+  if (status === 401) {
+    return "palvelin vaatii kirjautumisen. Anna token --bearer-env-valinnalla tai aja --auth, joka näyttää palvelimen OAuth-tiedot";
+  }
+  return "palvelin esti pyynnön eikä ota sitä vastaan tällä tunnisteella tai tästä verkosta (esim. puuttuva oikeus, IP-rajaus tai bottisuoja). Tarkista token ja oikeudet (--bearer-env) tai aja --auth nähdäksesi, vaatiiko palvelin OAuth-kirjautumisen. mcp-doctor ei yritä kiertää estoa";
+}
+
 function firstText(content: unknown): string {
   if (!Array.isArray(content)) return "";
   for (const c of content) {
@@ -56,7 +70,9 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
     } catch (e) {
       const tail = opts.stderrTail?.().trim();
       const extra = tail ? ` | palvelimen stderr: ${short(tail)}` : "";
-      findings.push({ id: "CONNECT_FAILED", severity: "error", message: `yhteys tai initialize-kättely epäonnistui: ${errText(e)}${extra}` });
+      const status = httpStatusOf(e);
+      const blocked = status === 401 || status === 403 ? ` | HTTP ${status}: ${blockedHint(status)}` : "";
+      findings.push({ id: "CONNECT_FAILED", severity: "error", message: `yhteys tai initialize-kättely epäonnistui: ${errText(e)}${blocked}${extra}` });
       return build(opts, null, 0, findings, smokeResults);
     }
 
