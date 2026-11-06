@@ -45,6 +45,7 @@ export const RULES: readonly { id: string; severity: Severity; text: string }[] 
   { id: "AUTH_CHECK_FAILED", severity: "error", text: "The unauthenticated initialize request failed." },
   { id: "AUTH_LOGIN_REQUIRED", severity: "info", text: "The server requires login, so the full check could not run without a token." },
   { id: "AUTH_NOT_REQUIRED", severity: "info", text: "The server does not require login; the OAuth check was skipped." },
+  { id: "AUTH_FORBIDDEN", severity: "info", text: "The server refused the unauthenticated request with 403 and gave no OAuth challenge; the OAuth check was skipped." },
   { id: "AUTH_OK", severity: "info", text: "OAuth metadata is in order." },
   { id: "AUTH_WWW_AUTHENTICATE_MISSING", severity: "warning", text: "The 401 response has no WWW-Authenticate: Bearer header." },
   { id: "AUTH_RESOURCE_METADATA_HINT_MISSING", severity: "info", text: "WWW-Authenticate has no resource_metadata parameter." },

@@ -27,7 +27,7 @@ jobs:
 
 Pin to a version tag or a commit SHA, never `@main`.
 
-Inputs: `command` or `url` (use one of them), `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth` (OAuth check for `url`) `max-tokens` (token budget) and `sarif` (unreleased, see below).
+Inputs: `command` or `url` (use one of them), `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth` (OAuth check for `url`), `max-tokens` (token budget) and `sarif` (unreleased, see below).
 
 - A stdio server sees only the environment variables you name. Set the values in the `env` block of the action step and list the names (separated by spaces) in `env-names`.
 - For an HTTP server, set the token from a secret in the `env` block and pass the variable's name in `bearer-env`.

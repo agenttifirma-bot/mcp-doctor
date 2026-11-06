@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv } from "ajv";
 import addFormats from "ajv-formats";
@@ -59,6 +59,18 @@ describe("SARIF-muoto", () => {
     const idt = RULES.map((r) => r.id);
     expect(new Set(idt).size).toBe(idt.length);
     for (const r of RULES) expect(r.text.length).toBeGreaterThan(5);
+  });
+
+  it("jokainen lähdekoodin löydöskoodi on sääntötaulukossa", () => {
+    const hakemisto = new URL("../src/", import.meta.url);
+    const koodit = new Set<string>();
+    for (const nimi of readdirSync(hakemisto)) {
+      if (!nimi.endsWith(".ts") || nimi === "sarif.ts") continue;
+      for (const m of readFileSync(new URL(nimi, hakemisto), "utf8").matchAll(/"([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)"/g)) koodit.add(m[1]);
+    }
+    expect(koodit.size).toBeGreaterThan(40);
+    const idt = new Set(RULES.map((r) => r.id));
+    expect([...koodit].filter((k) => !idt.has(k))).toEqual([]);
   });
 
   it("tuntematon koodi saa oman säännön ja ruleIndex täsmää", () => {
