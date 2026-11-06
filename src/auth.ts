@@ -108,6 +108,10 @@ export async function authCheck(serverUrl: string, fetchFn: FetchLike, timeoutMs
       signal: AbortSignal.timeout(timeoutMs),
     });
     await res.body?.cancel().catch(() => undefined);
+    if (res.status === 403) {
+      out.push(f("AUTH_FORBIDDEN", "info", "palvelin esti kirjautumattoman initialize-pyynnön tilalla 403 (Forbidden) eikä antanut OAuth-haastetta (401): syy voi olla IP-rajaus, bottisuoja tai oikeuden puute. OAuth-tarkistus ohitetaan. Kokeile tokenilla (--bearer-env); mcp-doctor ei yritä kiertää estoa"));
+      return out;
+    }
     if (res.status !== 401) {
       out.push(f("AUTH_NOT_REQUIRED", "info", `palvelin vastasi kirjautumattomaan initialize-pyyntöön tilalla ${res.status} eikä 401: kirjautumista ei vaadita, OAuth-tarkistus ohitetaan`));
       return out;
