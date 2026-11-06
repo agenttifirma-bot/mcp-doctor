@@ -77,6 +77,23 @@ new Server({ name: "notes-server", version: "1.0.0" }, { capabilities: { tools: 
 
 **Verified:** yes (before state). The after state is the same server with `tools: {}` declared.
 
+### `TOTAL_TIMEOUT` (error)
+
+**Means:** the run used up `--total-timeout-ms`, the time limit for the handshake, tool listing and smoke calls together. The message tells which phase was cut off. Smoke calls that were not started are listed as failed, and if the limit ran out during tool listing the report also has `TOOLS_LIST_FAILED` (not a false `TOOLS_EMPTY`).
+
+**Why it matters:** `--timeout-ms` limits only one request. A server that answers every request just inside that limit, or a long smoke file, can hold a CI step for a long time. The total limit stops it.
+
+**Fix:** find the slow phase from the message. Speed up the server (cache startup work, make the slow tool faster) or raise `--total-timeout-ms` if the server is meant to be that slow. The `--auth` check runs first and is not counted.
+
+```
+VIRHE    [TOOLS_LIST_FAILED] tools/list epäonnistui: MCP error -32001: Request timed out
+VIRHE    [TOTAL_TIMEOUT] kokonaisaikaraja 450 ms ylittyi: tools/list ei valmistunut ajoissa
+```
+
+**Check:** run again with a larger limit; the code is gone and the last line says `-> OK`.
+
+**Verified:** yes, against a local test server that delayed every response by 300 ms.
+
 ---
 
 ## Tool list
@@ -662,6 +679,20 @@ HUOMIO   [AUTH_NOT_REQUIRED] palvelin vastasi kirjautumattomaan initialize-pyynt
 ```
 
 **Verified:** yes. The test server answered `200` but was not a complete MCP server, so the run also printed a `CONNECT_FAILED` timeout. A real open server would not.
+
+### `AUTH_FORBIDDEN` (info)
+
+**Means:** the server answered the unauthenticated `initialize` with `403 Forbidden` instead of the `401` login challenge, so the OAuth check is skipped. The cause can be an IP restriction, bot protection or a missing permission.
+
+**Why it matters:** it is not a login problem that OAuth could solve, and mcp-doctor does not try to get around the block. The normal run also fails with `CONNECT_FAILED` that names HTTP 403.
+
+**Fix:** check the server's access rules. Try with a token you created yourself (`--bearer-env NAME`). In `--auth --json` output this code replaces `AUTH_NOT_REQUIRED` for 403 responses.
+
+```
+HUOMIO   [AUTH_FORBIDDEN] palvelin esti kirjautumattoman initialize-pyynnön tilalla 403 (Forbidden) eikä antanut OAuth-haastetta (401): syy voi olla IP-rajaus, bottisuoja tai oikeuden puute. OAuth-tarkistus ohitetaan. Kokeile tokenilla (--bearer-env); mcp-doctor ei yritä kiertää estoa
+```
+
+**Verified:** yes, against a local test server that always answers 403.
 
 ### `AUTH_LOGIN_REQUIRED` (info)
 
