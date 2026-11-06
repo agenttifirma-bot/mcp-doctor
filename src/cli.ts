@@ -36,7 +36,7 @@ Valinnat:
   --timeout-ms <luku>    yksittäisen pyynnön aikakatkaisu, oletus 10000
   --max-tokens <luku>    tokenimittarin raja: työkalumäärittelyjen arvioitu yhteiskoko ei saa ylittää tätä (ylitys on virhe)
   --total-timeout-ms <luku>
-                         koko tarkastuksen aikaraja (kättely, listaus ja savuajo), oletus ei rajaa
+                         kättelyn, listauksen ja savuajon yhteinen aikaraja (ei koske --auth-tarkistusta), oletus ei rajaa
   --env <NIMI>           välitä ympäristömuuttuja stdio-palvelimelle (toistettava)
   --bearer-env <NIMI>    lue HTTP-palvelimen Bearer-token tästä ympäristömuuttujasta
   --auth                 HTTP-palvelimen OAuth-tarkistus: 401 ja WWW-Authenticate, resurssin ja valtuutuspalvelimen

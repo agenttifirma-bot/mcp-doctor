@@ -74,7 +74,7 @@ Yhteenveto: 0 virhettä, 0 varoitusta, 0 huomiota -> OK
 | `--json` | report as JSON |
 | `--strict` | warnings fail the run too |
 | `--timeout-ms <number>` | timeout for a single request, default 10000 |
-| `--total-timeout-ms <number>` | time limit for the whole check (handshake, listing and smoke calls together), no limit by default. Each request's timeout is the smaller of `--timeout-ms` and the time left. When the limit is hit, the remaining smoke calls are skipped and `TOTAL_TIMEOUT` is reported |
+| `--total-timeout-ms <number>` | time limit for the handshake, tool listing and smoke calls together, no limit by default. The `--auth` check runs before them and is not covered (it only has the `--timeout-ms` limit per request). Each request's timeout is the smaller of `--timeout-ms` and the time left. When the limit is hit, the remaining smoke calls are skipped and `TOTAL_TIMEOUT` is reported |
 | `--env <NAME>` | pass an environment variable to the stdio server (repeatable) |
 | `--bearer-env <NAME>` | read the HTTP server's Bearer token from this variable |
 | `--auth` | OAuth check, only together with `--url` (401, WWW-Authenticate, RFC 9728 and 8414 metadata, PKCE S256, refresh_token) |

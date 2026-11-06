@@ -109,6 +109,8 @@ export async function diagnose(opts: DiagnoseOptions): Promise<Report> {
         do {
           if (overBudget()) {
             markTotal(`työkalulistaus keskeytettiin ${pages} sivun jälkeen`);
+            // Listaus jäi kesken, joten se on epäonnistunut eikä tyhjä (muuten alla tulisi väärä TOOLS_EMPTY).
+            findings.push({ id: "TOOLS_LIST_FAILED", severity: "error", message: `tools/list jäi kesken kokonaisaikarajan vuoksi (${pages} sivua haettu)` });
             toolListMissing = true;
             cursor = undefined;
             break;

@@ -1,5 +1,7 @@
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { describe, expect, it } from "vitest";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { describe, expect, it, vi } from "vitest";
 import { formatText } from "../src/report.js";
 import { diagnose } from "../src/runner.js";
 import type { SmokeCall } from "../src/types.js";
@@ -264,5 +266,35 @@ describe("diagnose: kokonaisaikaraja (--total-timeout-ms)", () => {
     expect(ids).toContain("CONNECT_FAILED");
     expect(ids).toContain("TOTAL_TIMEOUT");
     expect(r.ok).toBe(false);
+  });
+
+  it("kokonaisaika loppuu kättelyn jälkeen ennen ensimmäistä tools/list-sivua: TOOLS_LIST_FAILED, ei väärää TOOLS_EMPTY", async () => {
+    // Kello hypätään tunnin eteenpäin heti, kun asiakas on lähettänyt notifications/initialized (kättely valmis).
+    // Näin raja ylittyy deterministisesti juuri kättelyn ja ensimmäisen listauksen välissä, eikä testi riipu ajoituksista.
+    const inner = new StdioClientTransport({ command: NODE, args: [fixture("good-server.mjs")], stderr: "pipe" });
+    let jump = 0;
+    const realNow = Date.now.bind(Date);
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => realNow() + jump);
+    const transport: Transport = {
+      start: () => inner.start(),
+      close: () => inner.close(),
+      send: (m: JSONRPCMessage, o) => {
+        if ("method" in m && m.method === "notifications/initialized") jump = 3_600_000;
+        return inner.send(m, o);
+      },
+      set onmessage(f) { inner.onmessage = f; },
+      set onclose(f) { inner.onclose = f; },
+      set onerror(f) { inner.onerror = f; },
+    };
+    try {
+      const r = await diagnose({ transport, target: "good", timeoutMs: 10000, totalTimeoutMs: 5000, strict: false });
+      const ids = r.findings.map((f) => f.id);
+      expect(ids).toContain("TOTAL_TIMEOUT");
+      expect(ids).toContain("TOOLS_LIST_FAILED");
+      expect(ids).not.toContain("TOOLS_EMPTY");
+      expect(r.ok).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

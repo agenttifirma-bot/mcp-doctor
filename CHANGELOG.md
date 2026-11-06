@@ -54,7 +54,7 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 - Testi `test/demo.test.ts` ajaa demon jokaisessa CI-ajossa, joten ohjeen tuloste ei vanhene huomaamatta.
 - Syöteskeeman tarkistus laskeutuu myös `anyOf`/`oneOf`/`allOf`-haaroihin ja tuple-muotoisiin taulukoihin (`items`-taulukko tai `prefixItems`). Esim. nullable-taulukko `anyOf: [{"type": "array"}, {"type": "null"}]` ilman `items`-määrittelyä saa nyt `SCHEMA_ARRAY_ITEMS_MISSING`-varoituksen (polku `x.anyOf[0]`). Haaroilta ei vaadita omaa kuvausta, ja haaran `required` saa viitata vanhemman kenttiin (`anyOf: [{"required": ["a"]}, {"required": ["b"]}]`). Katselmointi 31.10.2026, löydös 2.
 
-- `--total-timeout-ms <luku>`: koko tarkastuksen aikaraja (kättely, työkalulistaus ja savuajo yhteensä). Aiemmin `--timeout-ms` rajasi vain yksittäisen pyynnön, joten palvelin, joka vastaa jokaiseen pyyntöön juuri rajan sisällä, tai monen kutsun savuajo saattoi pitää CI-askelta pitkään. Rajan ylittyessä tulee `TOTAL_TIMEOUT` (virhe), ja ohitetut savuajon kutsut näkyvät raportissa epäonnistuneina. Oletus ennallaan (ei kokonaisrajaa). Katselmointi 30.10.2026, löydös 3.
+- `--total-timeout-ms <luku>`: kättelyn, työkalulistauksen ja savuajon yhteinen aikaraja. `--auth`-tarkistus ajetaan ennen niitä eikä kuulu rajaan (sillä on vain `--timeout-ms` pyyntöä kohti). Aiemmin `--timeout-ms` rajasi vain yksittäisen pyynnön, joten palvelin, joka vastaa jokaiseen pyyntöön juuri rajan sisällä, tai monen kutsun savuajo saattoi pitää CI-askelta pitkään. Rajan ylittyessä tulee `TOTAL_TIMEOUT` (virhe); jos aika loppuu kesken työkalulistauksen, raportissa on lisäksi `TOOLS_LIST_FAILED` eikä väärää `TOOLS_EMPTY`-varoitusta. Ohitetut savuajon kutsut näkyvät raportissa epäonnistuneina. Oletus ennallaan (ei kokonaisrajaa). Katselmointi 30.10.2026, löydös 3.
 
 ### Muutettu
 
@@ -64,7 +64,7 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 
 - Turvallisuus: stdio-komennon salaiselta näyttävät argumentit peitetään raportin kohderiviltä (teksti ja JSON). Esim. `--token xyz` -> `--token ***`, `--api-key=xyz`, `GITHUB_TOKEN=xyz` ja URL:n tunnukset ja kyselyparametrit (`https://***@host/x?***`). Palvelin käynnistetään edelleen alkuperäisillä argumenteilla. Aiemmin komentoriville annettu token päätyi CI-lokiin, vaikka HTTP-polussa kyselyparametrit jo jätettiin pois.
 - Odottamattoman virheen viesti siivotaan ja lyhennetään kuten muu palvelimelta tuleva teksti, joten se ei voi aloittaa uutta riviä (esim. `::warning::`) eikä lähettää escape-sekvenssejä.
-- README: testimäärä päivitetty (137).
+- README: testimäärä päivitetty (128).
 
 ## [0.3.0] - 2026-10-19
 
