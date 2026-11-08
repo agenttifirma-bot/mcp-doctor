@@ -108,6 +108,18 @@ describe("CLI: stdio-palvelin", () => {
     expect(await main(["--timeout-ms", "1500", "--smoke", "s.json", ...good], io)).toBe(1);
     expect(io.out).toContain("SMOKE_CALL_FAILED");
   });
+
+  it("--total-timeout-ms katkaisee monen kutsun savuajon", async () => {
+    const io = makeIo({}, { "s.json": JSON.stringify([{ tool: "slow", arguments: { ms: 1500 } }, { tool: "slow", arguments: { ms: 1500 } }, { tool: "slow", arguments: { ms: 1500 } }]) });
+    expect(await main(["--total-timeout-ms", "2000", "--smoke", "s.json", ...good], io)).toBe(1);
+    expect(io.out).toContain("TOTAL_TIMEOUT");
+  });
+
+  it.each([["0"], ["-5"], ["1.5"], ["abc"]])("--total-timeout-ms %s on käyttövirhe", async (v) => {
+    const io = makeIo();
+    expect(await main(["--total-timeout-ms", v, ...good], io)).toBe(2);
+    expect(io.err).toContain("--total-timeout-ms");
+  });
 });
 
 describe("CLI: HTTP-palvelin", () => {

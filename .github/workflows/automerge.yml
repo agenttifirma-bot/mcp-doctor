@@ -1,0 +1,39 @@
+name: Automerge
+
+# pull_request_target ja issue_comment: tama tyonkulku ja tools/automerge.py ladataan AINA paahaarasta (luotettu).
+# PR:n omaa koodia ei ladata eika suoriteta; paatos tehdaan metatiedoista, tiedostolistasta, patch-teksteista
+# ja riippumattoman tarkastajan kommentista (Tonyn paatos 4.11.2026: kaikki paitsi rajatut).
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    # PR-tapahtuma: saman repon haara tai botin oma fork (tools/automerge.py rajaa tarkemmin).
+    # Kommentti: vain botin (tarkastajan) kommentti PR:ssa kaynnistaa uuden arvion.
+    if: >-
+      (github.event_name == 'pull_request_target' &&
+       (github.event.pull_request.head.repo.full_name == github.repository ||
+        (github.event.pull_request.user.login == 'agenttifirma-bot' &&
+         github.event.pull_request.head.repo.owner.login == 'agenttifirma-bot'))) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       github.event.comment.user.login == 'agenttifirma-bot')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Arvioi ja kytke auto-merge tarvittaessa
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: python3 tools/automerge.py

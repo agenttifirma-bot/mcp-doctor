@@ -6,6 +6,14 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 
 ### Lisätty
 
+- `--total-timeout-ms <luku>`: kättelyn, työkalulistauksen ja savuajon yhteinen aikaraja. `--auth`-tarkistus ajetaan ennen niitä eikä kuulu rajaan (sillä on vain `--timeout-ms` pyyntöä kohti). Aiemmin `--timeout-ms` rajasi vain yksittäisen pyynnön, joten palvelin, joka vastaa jokaiseen pyyntöön juuri rajan sisällä, tai monen kutsun savuajo saattoi pitää CI-askelta pitkään. Rajan ylittyessä tulee `TOTAL_TIMEOUT` (virhe); jos aika loppuu kesken työkalulistauksen, raportissa on lisäksi `TOOLS_LIST_FAILED` eikä väärää `TOOLS_EMPTY`-varoitusta. Ohitetut savuajon kutsut näkyvät raportissa epäonnistuneina. Oletus ennallaan (ei kokonaisrajaa). Katselmointi 30.10.2026, löydös 3.
+- `docs/fixes.md`: korjausopas löydöksittäin (englanniksi). Opas kattaa kaikki löydöstunnukset, myös `TOTAL_TIMEOUT` ja `AUTH_FORBIDDEN`; testi `test/fixes-kattavuus.test.ts` estää uuden tunnuksen jäämisen dokumentoimatta.
+
+### Muutettu
+
+- Kun HTTP-palvelin torjuu yhteyden tilalla 401 tai 403, `CONNECT_FAILED`-viesti nimeää tilan ja antaa vihjeen jatkotoimista (`--bearer-env`, `--auth`). Estoa ei yritetä kiertää.
+- `--auth` ei enää väitä kirjautumisen olevan tarpeeton, kun palvelin vastaa 403: uusi huomio `AUTH_FORBIDDEN` kertoo eston.
+- JSON-ulostulo muuttuu: uusi tunnus `AUTH_FORBIDDEN` korvaa 403-tilassa tunnuksen `AUTH_NOT_REQUIRED`. Jos käsittelet `--auth --json` -ulostuloa koneellisesti, päivitä tunnuksen tarkistus.
 - Issue-lomake `health-check.yml`: MCP-palvelimen tekijä voi pyytää ilmaisen terveystarkastuksen. Lomake kysyy repon osoitteen, käynnistyskomennon, haluttaanko julkinen vastaus ja suostumuksen eristettyyn ajoon. Vastaukset hyväksytään käsin ennen lähettämistä.
 
 ## [0.5.0] - 2026-11-02

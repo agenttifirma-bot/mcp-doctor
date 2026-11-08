@@ -1,5 +1,7 @@
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { describe, expect, it } from "vitest";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { describe, expect, it, vi } from "vitest";
 import { formatText } from "../src/report.js";
 import { diagnose } from "../src/runner.js";
 import type { SmokeCall } from "../src/types.js";
@@ -220,5 +222,79 @@ describe("diagnose: työkalulistaus", () => {
     const r = await run("no-tools-server.mjs", [call("x")]);
     const f = r.findings.find((x) => x.id === "SMOKE_TOOL_NOT_FOUND");
     expect(f?.message).toContain("työkalulistaa ei saatu");
+  });
+});
+
+describe("diagnose: kokonaisaikaraja (--total-timeout-ms)", () => {
+  const runTotal = (smoke: SmokeCall[], totalTimeoutMs: number | undefined, timeoutMs = 10000) => {
+    const transport = new StdioClientTransport({ command: NODE, args: [fixture("good-server.mjs")], stderr: "pipe" });
+    return diagnose({ transport, target: "good", smoke, timeoutMs, totalTimeoutMs, strict: false });
+  };
+
+  it("monta hidasta kutsua: pyyntökohtainen raja ei laukea, kokonaisraja laukeaa ja loput ohitetaan", async () => {
+    const t0 = Date.now();
+    const smoke = [call("slow", { ms: 1500 }), call("slow", { ms: 1500 }), call("slow", { ms: 1500 }), call("greet", { name: "Tony" })];
+    const r = await runTotal(smoke, 2500);
+    const ids = r.findings.map((f) => f.id);
+    expect(ids).toContain("TOTAL_TIMEOUT");
+    expect(ids.filter((x) => x === "TOTAL_TIMEOUT")).toHaveLength(1);
+    expect(r.ok).toBe(false);
+    // ensimmäinen kutsu onnistuu, toinen katkeaa kokonaisrajaan, loput ohitetaan mutta näkyvät tuloksissa
+    expect(r.smoke.map((s) => s.ok)).toEqual([true, false, false, false]);
+    expect(r.smoke).toHaveLength(4);
+    expect(Date.now() - t0).toBeLessThan(5000);
+    const f = r.findings.find((x) => x.id === "TOTAL_TIMEOUT");
+    expect(f?.message).toContain("2500 ms");
+    expect(f?.severity).toBe("error");
+  });
+
+  it("ilman kokonaisrajaa sama savuajo menee läpi (oletus ennallaan)", async () => {
+    const r = await runTotal([call("slow", { ms: 300 }), call("slow", { ms: 300 })], undefined);
+    expect(r.findings.map((f) => f.id)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("riittävä kokonaisraja ei tuota löydöksiä", async () => {
+    const r = await runTotal([call("slow", { ms: 200 }), call("greet", { name: "Tony" })], 8000);
+    expect(r.findings.map((f) => f.id)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("kokonaisraja ylittyy jo kättelyssä: CONNECT_FAILED ja TOTAL_TIMEOUT", async () => {
+    const r = await runTotal([call("greet", { name: "Tony" })], 1);
+    const ids = r.findings.map((f) => f.id);
+    expect(ids).toContain("CONNECT_FAILED");
+    expect(ids).toContain("TOTAL_TIMEOUT");
+    expect(r.ok).toBe(false);
+  });
+
+  it("kokonaisaika loppuu kättelyn jälkeen ennen ensimmäistä tools/list-sivua: TOOLS_LIST_FAILED, ei väärää TOOLS_EMPTY", async () => {
+    // Kello hypätään tunnin eteenpäin heti, kun asiakas on lähettänyt notifications/initialized (kättely valmis).
+    // Näin raja ylittyy deterministisesti juuri kättelyn ja ensimmäisen listauksen välissä, eikä testi riipu ajoituksista.
+    const inner = new StdioClientTransport({ command: NODE, args: [fixture("good-server.mjs")], stderr: "pipe" });
+    let jump = 0;
+    const realNow = Date.now.bind(Date);
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => realNow() + jump);
+    const transport: Transport = {
+      start: () => inner.start(),
+      close: () => inner.close(),
+      send: (m: JSONRPCMessage, o) => {
+        if ("method" in m && m.method === "notifications/initialized") jump = 3_600_000;
+        return inner.send(m, o);
+      },
+      set onmessage(f) { inner.onmessage = f; },
+      set onclose(f) { inner.onclose = f; },
+      set onerror(f) { inner.onerror = f; },
+    };
+    try {
+      const r = await diagnose({ transport, target: "good", timeoutMs: 10000, totalTimeoutMs: 5000, strict: false });
+      const ids = r.findings.map((f) => f.id);
+      expect(ids).toContain("TOTAL_TIMEOUT");
+      expect(ids).toContain("TOOLS_LIST_FAILED");
+      expect(ids).not.toContain("TOOLS_EMPTY");
+      expect(r.ok).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
