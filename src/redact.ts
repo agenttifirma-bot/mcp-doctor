@@ -55,3 +55,27 @@ export function redactArgs(argv: readonly string[]): string[] {
   }
   return out;
 }
+
+/** Lyhyempiä arvoja ei peitetä: `1`, `true` tai `prod` peittäminen sotkisi raportin eikä suojaisi mitään. */
+export const MIN_SECRET_LENGTH = 8;
+
+/**
+ * Peittää tunnetut salaiset arvot (--env:llä välitetyt arvot ja --bearer-env-token) valmiista tulosteesta.
+ * Palvelin voi tulostaa saamansa arvon stderriin ("virheellinen avain sk-…") tai virheviestiinsä, ja
+ * se päätyisi muuten raporttiin ja CI-lokiin. Peitetään sekä raaka muoto että JSON-merkkijonon muoto.
+ */
+export function maskSecrets(text: string, secrets: readonly string[]): string {
+  const forms = new Set<string>();
+  for (const s of secrets) {
+    if (s.length < MIN_SECRET_LENGTH) continue;
+    forms.add(s);
+    forms.add(JSON.stringify(s).slice(1, -1));
+  }
+  let out = text;
+  for (const f of [...forms].sort((a, b) => b.length - a.length)) {
+    out = out.split(f).join(MASK);
+    // Lyhennetty viesti (300 merkkiä + "…") voi katkaista arvon kesken: peitetään myös katkennut alkuosa.
+    for (let k = f.length - 1; k >= 4; k--) out = out.split(`${f.slice(0, k)}…`).join(`${MASK}…`);
+  }
+  return out;
+}

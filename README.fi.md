@@ -211,6 +211,7 @@ Lukitse Action versiotagiin (`@v0.5.0`) tai tiukemmin commit-SHA:han, älä `@ma
 - Stdio-palvelin saa vain `PATH`- ja perusmuuttujat. Muut ympäristömuuttujat välitetään vain nimeämällä ne `--env`-valinnalla.
 - Bearer-token luetaan ympäristömuuttujasta, ei komentoriviltä, eikä sitä tulosteta. Tulostuva kohde-osoite jättää kyselyparametrit pois.
 - Stdio-komennon tulostuvasta kohderivistä peitetään salaiselta näyttävät argumentit (`--token`, `--api-key`, `--password`, `NIMI_TOKEN=…`, URL:n tunnukset ja kyselyparametrit). Peitto on varaverkko: välitä salaisuudet mieluiten `--env`-valinnalla, älä komentoriviltä.
+- `--env`-valinnalla välitetyt arvot ja `--bearer-env`-token (vähintään 8 merkkiä) peitetään merkinnällä `***` koko raportista, myös palvelimen stderristä ja virheviesteistä.
 - Raportti ei sisällä työkalujen tuloksia, vain virheen ensimmäisen tekstirivin (enintään 300 merkkiä).
 - Yhteysvirheen viestiin liitetään stdio-palvelimen viimeinen stderr-teksti. Jos palvelimesi kirjoittaa lokiin salaisuuksia, ne päätyvät CI-lokiin.
 

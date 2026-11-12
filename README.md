@@ -167,6 +167,7 @@ The check never sends credentials. Note that it also makes unauthenticated GET r
 - A stdio server receives only `PATH` and basic variables. Other environment variables are passed only if you name them with `--env`.
 - The Bearer token is read from an environment variable, not from the command line, and it is never printed. The printed target address omits query parameters.
 - In the printed target line of a stdio command, arguments that look secret are masked (`--token`, `--api-key`, `--password`, `NAME_TOKEN=…`, credentials and query parameters in URLs). This is a safety net: pass secrets with `--env` rather than on the command line.
+- Values passed with `--env` and the `--bearer-env` token (8 characters or longer) are masked as `***` everywhere in the report, including server stderr and error messages.
 - The report contains no tool results, only the first line of an error text (at most 300 characters).
 - A connection error message includes the last stderr text of a stdio server. If your server logs secrets there, they end up in the CI log.
 

@@ -103,6 +103,19 @@ describe("CLI: stdio-palvelin", () => {
     expect(io.out).toContain("OK");
   });
 
+  it("--env-arvo ei vuoda raporttiin, vaikka palvelin tulostaa sen stderriin", async () => {
+    const leak = fixture("leak-server.mjs");
+    const secret = "sk-testi-1234567890abcdef";
+    for (const json of [false, true]) {
+      const io = makeIo({ API_TOKEN: secret });
+      expect(await main([...(json ? ["--json"] : []), "--env", "API_TOKEN", "--", NODE, leak], io)).toBe(1);
+      expect(io.out).toContain("CONNECT_FAILED");
+      expect(io.out).toContain("virheellinen avain: ***");
+      expect(io.out).not.toContain(secret);
+      expect(io.out).not.toContain(secret.slice(0, 8));
+    }
+  });
+
   it("aikakatkaisu --timeout-ms:llä", async () => {
     const io = makeIo({}, { "s.json": JSON.stringify([{ tool: "slow", arguments: { ms: 6000 } }]) });
     expect(await main(["--timeout-ms", "1500", "--smoke", "s.json", ...good], io)).toBe(1);

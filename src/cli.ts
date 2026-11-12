@@ -3,7 +3,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { authCheck } from "./auth.js";
-import { redactArgs } from "./redact.js";
+import { maskSecrets, redactArgs } from "./redact.js";
 import { formatJson, formatText, summarize } from "./report.js";
 import { diagnose } from "./runner.js";
 import { parseSmokeSpec } from "./smoke.js";
@@ -87,6 +87,8 @@ function one(args: Args, name: string): string | undefined {
 
 /** Ajaa komentorivin ja palauttaa poistumiskoodin. Ei kutsu process.exit-funktiota. */
 export async function main(argv: string[], io: CliIo): Promise<number> {
+  // Tunnetut salaiset arvot (--env-arvot ja Bearer-token): peitetään kaikesta tulosteesta.
+  const secrets: string[] = [];
   try {
     // Vain '--'-merkkiä edeltävät argumentit ovat meidän: palvelimen oma '--help' ei saa laukaista ohjetta.
     const ennenErotinta = argv.includes("--") ? argv.slice(0, argv.indexOf("--")) : argv;
@@ -147,6 +149,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       if (bearerEnv !== undefined) {
         const token = io.env[bearerEnv];
         if (!token) throw new UsageError(`Ympäristömuuttuja ${bearerEnv} on tyhjä tai puuttuu`);
+        secrets.push(token);
         requestInit = { headers: { Authorization: `Bearer ${token}` } };
         if (parsed.protocol === "http:" && !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname)) {
           io.stderr(`Varoitus: Bearer-token lähetetään salaamattomana (http) osoitteeseen ${parsed.hostname}. Käytä https:ää.\n`);
@@ -161,12 +164,14 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
         const v = io.env[name];
         if (v === undefined) throw new UsageError(`Ympäristömuuttujaa ${name} ei ole asetettu`);
         env[name] = v;
+        secrets.push(v);
       }
       const [command, ...rest] = args.command;
       const stdio = new StdioClientTransport({ command, args: rest, env: { ...getSafeEnv(io.env), ...env }, stderr: "pipe" });
       let tail = "";
       stdio.stderr?.on("data", (d: Buffer | string) => {
-        tail = (tail + d.toString()).slice(-1000);
+        // Peitetään ennen katkaisua, jotta 1000 merkin raja ei jätä salaisen arvon loppuosaa näkyviin.
+        tail = maskSecrets(tail + d.toString(), secrets).slice(-1000);
       });
       stderrTail = () => tail;
       transport = stdio;
@@ -189,14 +194,14 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       const summary = summarize(findings);
       report = { ...report, findings, summary, ok: summary.errors === 0 && (!strict || summary.warnings === 0) };
     }
-    io.stdout(args.bools.has("json") ? formatJson(report) : formatText(report));
+    io.stdout(maskSecrets(args.bools.has("json") ? formatJson(report) : formatText(report), secrets));
     return report.ok ? EXIT_OK : EXIT_FINDINGS;
   } catch (err) {
     if (err instanceof UsageError) {
       io.stderr(`Virhe: ${err.message}\n\n${USAGE}`);
       return EXIT_USAGE;
     }
-    io.stderr(`Odottamaton virhe: ${short(err instanceof Error ? err.message : String(err))}\n`);
+    io.stderr(maskSecrets(`Odottamaton virhe: ${short(err instanceof Error ? err.message : String(err))}\n`, secrets));
     return EXIT_INTERNAL;
   }
 }

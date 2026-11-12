@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactArgs } from "../src/redact.js";
+import { maskSecrets, redactArgs } from "../src/redact.js";
 
 describe("redactArgs: salaisuudet peitetään tulostettavasta komennosta", () => {
   it.each([
@@ -35,5 +35,25 @@ describe("redactArgs: salaisuudet peitetään tulostettavasta komennosta", () =>
     const argv = ["node", "s.js", "--token", "abc"];
     redactArgs(argv);
     expect(argv).toEqual(["node", "s.js", "--token", "abc"]);
+  });
+});
+
+describe("maskSecrets: tunnetut arvot peitetään valmiista tulosteesta", () => {
+  const S = "sk-testi-1234567890";
+
+  it("raaka ja JSON-muoto peitetään, lyhyet arvot jätetään", () => {
+    expect(maskSecrets(`avain ${S} hylätty`, [S])).toBe("avain *** hylätty");
+    const q = 'pa"ss\\word99';
+    expect(maskSecrets(JSON.stringify({ m: `x ${q} y` }), [q])).toBe('{"m":"x *** y"}');
+    expect(maskSecrets("tila true", ["true"])).toBe("tila true");
+  });
+
+  it("300 merkin lyhennys ei jätä arvon alkuosaa näkyviin", () => {
+    expect(maskSecrets(`virhe ${S.slice(0, 10)}…`, [S])).toBe("virhe ***…");
+    expect(maskSecrets("abc…", [S])).toBe("abc…");
+  });
+
+  it("pidempi arvo peitetään ennen lyhyempää, joka on sen osa", () => {
+    expect(maskSecrets("A-salainen-12345-B", ["salainen", "A-salainen-12345-B"])).toBe("***");
   });
 });
