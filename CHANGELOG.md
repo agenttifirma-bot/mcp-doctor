@@ -19,6 +19,10 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 - `--auth` ei enää väitä kirjautumisen olevan tarpeeton, kun palvelin vastaa 403: uusi huomio `AUTH_FORBIDDEN` kertoo eston.
 - JSON-ulostulo muuttuu: uusi tunnus `AUTH_FORBIDDEN` korvaa 403-tilassa tunnuksen `AUTH_NOT_REQUIRED`. Jos käsittelet `--auth --json` -ulostuloa koneellisesti, päivitä tunnuksen tarkistus.
 
+### Korjattu
+
+- `--timeout-ms` ja `--total-timeout-ms` hyväksyivät minkä tahansa positiivisen kokonaisluvun. Yli 2 147 483 647 ms:n (noin 24,8 vrk) arvolla Noden ajastin laukesi 1 ms:n kuluttua, joten terve palvelin raportoitiin `CONNECT_FAILED`-virheenä (Request timed out). Nyt liian suuri arvo on käyttövirhe (poistumiskoodi 2).
+
 ## [0.5.0] - 2026-11-02
 
 ### Lisätty

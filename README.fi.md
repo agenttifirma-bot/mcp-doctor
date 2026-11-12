@@ -82,7 +82,7 @@ Yhteenveto: 3 virhettä, 4 varoitusta, 0 huomiota -> EPÄONNISTUI
 | `--smoke <tiedosto>` | savuajo: kutsuu vain tiedostossa nimetyt työkalut |
 | `--json` | raportti JSONina |
 | `--strict` | varoituksetkin kaatavat ajon |
-| `--timeout-ms <luku>` | yksittäisen pyynnön aikakatkaisu, oletus 10000 |
+| `--timeout-ms <luku>` | yksittäisen pyynnön aikakatkaisu, oletus 10000, enintään 2147483647 (Noden ajastimen raja) |
 | `--env <NIMI>` | välittää ympäristömuuttujan stdio-palvelimelle (toistettava) |
 | `--bearer-env <NIMI>` | HTTP-palvelimen Bearer-token tästä muuttujasta |
 | `--auth` | HTTP-palvelimen OAuth-tarkistus (401, WWW-Authenticate, RFC 9728 ja 8414 -metatiedot, PKCE S256, refresh_token) |

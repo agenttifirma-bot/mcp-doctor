@@ -47,6 +47,11 @@ Valinnat:
 Poistumiskoodit: 0 kunnossa, 1 löydöksiä (virhe, tai varoitus --strict-tilassa), 2 käyttö- tai tiedostovirhe, 3 odottamaton sisäinen virhe.
 `;
 
+/** Suurin aikaraja, jonka Noden ajastin hyväksyy (2^31 − 1 ms, noin 24,8 vrk). Suuremmalla arvolla
+ * setTimeout ja AbortSignal.timeout laukeavat 1 ms:n kuluttua, jolloin terve palvelin näyttäisi
+ * aikakatkaistulta (CONNECT_FAILED). */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
 interface Args {
   command: string[];
   flags: Map<string, string[]>;
@@ -111,12 +116,14 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
     const timeoutRaw = one(args, "timeout-ms");
     const timeoutMs = timeoutRaw === undefined ? 10000 : Number(timeoutRaw);
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1) throw new UsageError("--timeout-ms täytyy olla positiivinen kokonaisluku");
+    if (timeoutMs > MAX_TIMEOUT_MS) throw new UsageError(`--timeout-ms saa olla enintään ${MAX_TIMEOUT_MS} (noin 24,8 vrk)`);
     const maxTokensRaw = one(args, "max-tokens");
     const maxTokens = maxTokensRaw === undefined ? undefined : Number(maxTokensRaw);
     if (maxTokens !== undefined && (!Number.isInteger(maxTokens) || maxTokens < 1)) throw new UsageError("--max-tokens täytyy olla positiivinen kokonaisluku");
     const totalRaw = one(args, "total-timeout-ms");
     const totalTimeoutMs = totalRaw === undefined ? undefined : Number(totalRaw);
     if (totalTimeoutMs !== undefined && (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 1)) throw new UsageError("--total-timeout-ms täytyy olla positiivinen kokonaisluku");
+    if (totalTimeoutMs !== undefined && totalTimeoutMs > MAX_TIMEOUT_MS) throw new UsageError(`--total-timeout-ms saa olla enintään ${MAX_TIMEOUT_MS} (noin 24,8 vrk)`);
 
     const smokePath = one(args, "smoke");
     let smoke;

@@ -128,6 +128,19 @@ describe("CLI: stdio-palvelin", () => {
     expect(io.out).toContain("TOTAL_TIMEOUT");
   });
 
+  it.each([["--timeout-ms"], ["--total-timeout-ms"]])("%s yli 2^31-1 ms on käyttövirhe eikä väärä aikakatkaisu", async (lippu) => {
+    const io = makeIo();
+    expect(await main([lippu, "2147483648", ...good], io)).toBe(2);
+    expect(io.err).toContain(`${lippu} saa olla enintään 2147483647`);
+    expect(io.out).not.toContain("CONNECT_FAILED");
+  });
+
+  it("--timeout-ms 2147483647 (suurin sallittu) ei aikakatkaise tervettä palvelinta", async () => {
+    const io = makeIo();
+    expect(await main(["--timeout-ms", "2147483647", ...good], io)).toBe(0);
+    expect(io.out).not.toContain("CONNECT_FAILED");
+  });
+
   it.each([["0"], ["-5"], ["1.5"], ["abc"]])("--total-timeout-ms %s on käyttövirhe", async (v) => {
     const io = makeIo();
     expect(await main(["--total-timeout-ms", v, ...good], io)).toBe(2);

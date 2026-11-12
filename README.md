@@ -73,7 +73,7 @@ Yhteenveto: 0 virhettä, 0 varoitusta, 0 huomiota -> OK
 | `--smoke <file>` | smoke calls: calls only the tools named in the file |
 | `--json` | report as JSON |
 | `--strict` | warnings fail the run too |
-| `--timeout-ms <number>` | timeout for a single request, default 10000 |
+| `--timeout-ms <number>` | timeout for a single request, default 10000, at most 2147483647 (Node timer limit) |
 | `--total-timeout-ms <number>` | time limit for the handshake, tool listing and smoke calls together, no limit by default. The `--auth` check runs before them and is not covered (it only has the `--timeout-ms` limit per request). Each request's timeout is the smaller of `--timeout-ms` and the time left. When the limit is hit, the remaining smoke calls are skipped and `TOTAL_TIMEOUT` is reported |
 | `--env <NAME>` | pass an environment variable to the stdio server (repeatable) |
 | `--bearer-env <NAME>` | read the HTTP server's Bearer token from this variable |
