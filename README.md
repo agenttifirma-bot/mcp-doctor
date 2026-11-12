@@ -27,13 +27,47 @@ jobs:
 
 Pin to a version tag or a commit SHA, never `@main`.
 
-Inputs: `command` or `url` (use one of them), `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth` (OAuth check for `url`) and `max-tokens` (token budget).
+Inputs: `command` or `url` (use one of them), `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth` (OAuth check for `url`), `max-tokens` (token budget) and `sarif` (unreleased, see below).
 
 - A stdio server sees only the environment variables you name. Set the values in the `env` block of the action step and list the names (separated by spaces) in `env-names`.
 - For an HTTP server, set the token from a secret in the `env` block and pass the variable's name in `bearer-env`.
 - Inputs are passed to the shell as environment variables, not on the command line, so they cannot inject commands.
 
 More CI detail (exit codes, `--strict`): [docs/ci.md](docs/ci.md) (in Finnish).
+
+## Findings in GitHub code scanning (SARIF) and README badge
+
+> **Unreleased.** `--sarif`, the `sarif` action input and the examples below are not in a published version yet (latest release: v0.5.0). They will be available after the next release.
+
+`--sarif <file>` writes the findings as [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html). Each finding becomes a result: `ruleId` is the finding code, `level` is `error`, `warning` or `note` (info), and the location is the checked command or URL (the server has no source file). `tool.driver.rules` lists every code with a description. The file is written even when the run fails, so findings reach GitHub exactly when they matter. Text that comes from the server is sanitized the same way as in the text report.
+
+Full example: [examples/workflow-sarif.yml](examples/workflow-sarif.yml). The key parts:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write          # needed by upload-sarif
+# ...
+      - uses: tonyweckstrom1987/mcp-doctor@v0.5.0   # use the release that includes `sarif`
+        with:
+          command: node dist/index.js
+          sarif: mcp-doctor.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()              # upload also when mcp-doctor failed the job
+        with:
+          sarif_file: mcp-doctor.sarif
+          category: mcp-doctor
+```
+
+Findings then appear in the repository's Security tab (code scanning). Code scanning needs GitHub Advanced Security on private repositories; it is free for public ones.
+
+Badge for your README (links back to mcp-doctor):
+
+```markdown
+[![checked with mcp-doctor](https://img.shields.io/badge/checked%20with-mcp--doctor-blue)](https://github.com/tonyweckstrom1987/mcp-doctor)
+```
+
+It is a static shields.io badge and says only that the project uses mcp-doctor, not that the check passed.
 
 ## Use with npx
 
@@ -72,6 +106,7 @@ Yhteenveto: 0 virhettä, 0 varoitusta, 0 huomiota -> OK
 | --- | --- |
 | `--smoke <file>` | smoke calls: calls only the tools named in the file |
 | `--json` | report as JSON |
+| `--sarif <file>` | write findings as SARIF 2.1.0 for GitHub code scanning (**unreleased**, see below) |
 | `--strict` | warnings fail the run too |
 | `--timeout-ms <number>` | timeout for a single request, default 10000 |
 | `--total-timeout-ms <number>` | time limit for the handshake, tool listing and smoke calls together, no limit by default. The `--auth` check runs before them and is not covered (it only has the `--timeout-ms` limit per request). Each request's timeout is the smaller of `--timeout-ms` and the time left. When the limit is hit, the remaining smoke calls are skipped and `TOTAL_TIMEOUT` is reported |
@@ -172,7 +207,7 @@ The check never sends credentials. Note that it also makes unauthenticated GET r
 
 ## Limitations
 
-No legacy SSE transport. `--auth` checks the OAuth configuration but does not log in. It checks tools only, not `resources` or `prompts`.
+No legacy SSE transport. SARIF locations point to the checked command or URL, not to a source line, because mcp-doctor does not know the server's source files. `--auth` checks the OAuth configuration but does not log in. It checks tools only, not `resources` or `prompts`.
 
 ## More
 

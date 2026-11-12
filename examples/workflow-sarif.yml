@@ -1,0 +1,28 @@
+# Copy to .github/workflows/mcp-doctor.yml in your MCP server repository.
+# Findings show up in the repository's Security tab (code scanning) and as PR annotations.
+# NOTE: the `sarif` input is unreleased. Use it only after a version newer than v0.5.0 is published, and pin that version.
+name: mcp-doctor
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write   # needed by upload-sarif
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci && npm run build   # build your own server
+      - uses: tonyweckstrom1987/mcp-doctor@v0.5.0   # replace with the release that includes `sarif`
+        with:
+          command: node dist/index.js  # your server's start command
+          sarif: mcp-doctor.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()                   # upload also when mcp-doctor found problems and failed
+        with:
+          sarif_file: mcp-doctor.sarif
+          category: mcp-doctor

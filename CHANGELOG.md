@@ -8,6 +8,7 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 
 - `--total-timeout-ms <luku>`: kättelyn, työkalulistauksen ja savuajon yhteinen aikaraja. `--auth`-tarkistus ajetaan ennen niitä eikä kuulu rajaan (sillä on vain `--timeout-ms` pyyntöä kohti). Aiemmin `--timeout-ms` rajasi vain yksittäisen pyynnön, joten palvelin, joka vastaa jokaiseen pyyntöön juuri rajan sisällä, tai monen kutsun savuajo saattoi pitää CI-askelta pitkään. Rajan ylittyessä tulee `TOTAL_TIMEOUT` (virhe); jos aika loppuu kesken työkalulistauksen, raportissa on lisäksi `TOOLS_LIST_FAILED` eikä väärää `TOOLS_EMPTY`-varoitusta. Ohitetut savuajon kutsut näkyvät raportissa epäonnistuneina. Oletus ennallaan (ei kokonaisrajaa). Katselmointi 30.10.2026, löydös 3.
 - `docs/fixes.md`: korjausopas löydöksittäin (englanniksi). Opas kattaa kaikki löydöstunnukset, myös `TOTAL_TIMEOUT` ja `AUTH_FORBIDDEN`; testi `test/fixes-kattavuus.test.ts` estää uuden tunnuksen jäämisen dokumentoimatta.
+- `--sarif <tiedosto>` ja actionin syöte `sarif`: löydökset SARIF 2.1.0 -muodossa GitHubin code scanningia varten (`ruleId` = löydöskoodi, `level` error/warning/note, sijaintina tarkastettu komento tai osoite, `tool.driver.rules` kaikista koodeista). Tiedosto kirjoitetaan myös epäonnistuneesta ajosta. Esimerkki `examples/workflow-sarif.yml` (upload-sarif) ja README-merkki. Testit validoivat tuloksen OASISin SARIF-skeemaa vasten.
 
 ### Muutettu
 

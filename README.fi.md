@@ -81,6 +81,7 @@ Yhteenveto: 3 virhettä, 4 varoitusta, 0 huomiota -> EPÄONNISTUI
 | --- | --- |
 | `--smoke <tiedosto>` | savuajo: kutsuu vain tiedostossa nimetyt työkalut |
 | `--json` | raportti JSONina |
+| `--sarif <tiedosto>` | kirjoittaa löydökset SARIF 2.1.0 -muodossa GitHubin code scanningia varten (**julkaisematon**, katso alla) |
 | `--strict` | varoituksetkin kaatavat ajon |
 | `--timeout-ms <luku>` | yksittäisen pyynnön aikakatkaisu, oletus 10000 |
 | `--env <NIMI>` | välittää ympäristömuuttujan stdio-palvelimelle (toistettava) |
@@ -191,6 +192,40 @@ jobs:
 
 Pin to a version tag or a commit SHA, never `@main`. All inputs are listed below.
 
+## Löydökset GitHubin code scanningiin (SARIF) ja README-merkki
+
+> **Julkaisematon.** `--sarif`, actionin `sarif`-syöte ja alla olevat esimerkit eivät ole vielä missään julkaistussa versiossa (uusin julkaisu on v0.5.0). Ominaisuus tulee käyttöön seuraavassa julkaisussa.
+
+`--sarif <tiedosto>` kirjoittaa löydökset [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) -muodossa. Jokaisesta löydöksestä tulee tulos: `ruleId` on löydöskoodi, `level` on `error`, `warning` tai `note` (huomio), ja sijainti on tarkastettu komento tai osoite, koska palvelimen lähdetiedostoa ei tunneta. Kenttä `tool.driver.rules` luettelee kaikki koodit kuvauksineen. Tiedosto kirjoitetaan myös silloin, kun ajo epäonnistuu, jotta löydökset päätyvät GitHubiin juuri silloin, kun niillä on merkitystä. Palvelimelta tuleva teksti siivotaan samalla tavalla kuin tekstiraportissa.
+
+Koko esimerkki: [examples/workflow-sarif.yml](examples/workflow-sarif.yml). Olennaiset kohdat:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write          # upload-sarif tarvitsee tämän
+# ...
+      - uses: tonyweckstrom1987/mcp-doctor@v0.5.0   # käytä julkaisua, jossa `sarif` on mukana
+        with:
+          command: node dist/index.js
+          sarif: mcp-doctor.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()              # lataa myös silloin, kun mcp-doctor kaatoi ajon
+        with:
+          sarif_file: mcp-doctor.sarif
+          category: mcp-doctor
+```
+
+Löydökset näkyvät tämän jälkeen repositorion Security-välilehdellä (code scanning). Yksityisissä repositorioissa code scanning vaatii GitHub Advanced Securityn, julkisissa se on ilmainen.
+
+Merkki omaan README:hesi (linkittää takaisin mcp-doctoriin):
+
+```markdown
+[![checked with mcp-doctor](https://img.shields.io/badge/checked%20with-mcp--doctor-blue)](https://github.com/tonyweckstrom1987/mcp-doctor)
+```
+
+Merkki on kiinteä shields.io-kuva. Se kertoo vain, että projekti käyttää mcp-doctoria, ei sitä, että tarkistus meni läpi.
+
 ## GitHub Action
 
 ```yaml
@@ -203,7 +238,7 @@ Pin to a version tag or a commit SHA, never `@main`. All inputs are listed below
     strict: "true"
 ```
 
-Lukitse Action versiotagiin (`@v0.5.0`) tai tiukemmin commit-SHA:han, älä `@main`-haaraan. Syötteet: `command` tai `url`, `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth`, `max-tokens`. Stdio-palvelin näkee vain nimeämäsi ympäristömuuttujat: aseta arvot action-askeleen `env`-lohkossa ja listaa nimet syötteellä `env-names` (välilyönnein erotettuna). HTTP-palvelimen tokenin aseta samoin `env`-lohkossa secretistä ja anna muuttujan nimi syötteellä `bearer-env`. Syötteet välitetään kuoreen ympäristömuuttujina, ei komentoriville, joten ne eivät voi injektoida komentoja.
+Lukitse Action versiotagiin (`@v0.5.0`) tai tiukemmin commit-SHA:han, älä `@main`-haaraan. Syötteet: `command` tai `url`, `smoke`, `strict`, `timeout-ms`, `env-names`, `bearer-env`, `auth`, `max-tokens`, `sarif` (julkaisematon). Stdio-palvelin näkee vain nimeämäsi ympäristömuuttujat: aseta arvot action-askeleen `env`-lohkossa ja listaa nimet syötteellä `env-names` (välilyönnein erotettuna). HTTP-palvelimen tokenin aseta samoin `env`-lohkossa secretistä ja anna muuttujan nimi syötteellä `bearer-env`. Syötteet välitetään kuoreen ympäristömuuttujina, ei komentoriville, joten ne eivät voi injektoida komentoja.
 
 ## Turvallisuus
 
@@ -231,7 +266,7 @@ mcp-doctor on tarkoituksella pieni ja rajattu yhteen tehtävään: yksi komento 
 
 ## Rajaukset
 
-Ei tue vanhaa SSE-siirtoa eikä OAuth-kirjautumista. Tarkistaa työkalut, ei `resources`- tai `prompts`-osioita. JSON Schema -validointi on kevyt (rakenne, `required`, tyypit, kuvaukset, sisäkkäiset objektit, taulukon alkiot (myös tuple-muoto) ja `anyOf`/`oneOf`/`allOf`-haarat 8 tasoon asti), ei täyttä skeemavalidointia. `$ref`-viittauksia ei seurata.
+Ei tue vanhaa SSE-siirtoa eikä OAuth-kirjautumista. SARIF-sijainti osoittaa tarkastettuun komentoon tai osoitteeseen, ei lähdekoodin riviin. Tarkistaa työkalut, ei `resources`- tai `prompts`-osioita. JSON Schema -validointi on kevyt (rakenne, `required`, tyypit, kuvaukset, sisäkkäiset objektit, taulukon alkiot (myös tuple-muoto) ja `anyOf`/`oneOf`/`allOf`-haarat 8 tasoon asti), ei täyttä skeemavalidointia. `$ref`-viittauksia ei seurata.
 
 ## Kehitys
 
