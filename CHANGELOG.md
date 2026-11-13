@@ -12,16 +12,13 @@ Muoto perustuu [Keep a Changelogiin](https://keepachangelog.com/fi/1.0.0/), ja v
 ### Korjattu
 
 - `--env`-valinnalla välitetty arvo tai `--bearer-env`-token ei enää päädy raporttiin, vaikka palvelin tulostaisi sen stderriin tai virheviestiinsä (esim. "virheellinen avain: sk-…" `CONNECT_FAILED`-viestissä ja siitä CI-lokiin). Arvot vähintään 8 merkistä peitetään tekstistä ja JSONista (`***`), myös 300 merkin lyhennyksen ja stderr-hännän katkaisun kohdalla.
+- `--timeout-ms` ja `--total-timeout-ms` hyväksyivät minkä tahansa positiivisen kokonaisluvun. Yli 2 147 483 647 ms:n (noin 24,8 vrk) arvolla Noden ajastin laukesi 1 ms:n kuluttua, joten terve palvelin raportoitiin `CONNECT_FAILED`-virheenä (Request timed out). Nyt liian suuri arvo on käyttövirhe (poistumiskoodi 2).
 
 ### Muutettu
 
 - Kun HTTP-palvelin torjuu yhteyden tilalla 401 tai 403, `CONNECT_FAILED`-viesti nimeää tilan ja antaa vihjeen jatkotoimista (`--bearer-env`, `--auth`). Estoa ei yritetä kiertää.
 - `--auth` ei enää väitä kirjautumisen olevan tarpeeton, kun palvelin vastaa 403: uusi huomio `AUTH_FORBIDDEN` kertoo eston.
 - JSON-ulostulo muuttuu: uusi tunnus `AUTH_FORBIDDEN` korvaa 403-tilassa tunnuksen `AUTH_NOT_REQUIRED`. Jos käsittelet `--auth --json` -ulostuloa koneellisesti, päivitä tunnuksen tarkistus.
-
-### Korjattu
-
-- `--timeout-ms` ja `--total-timeout-ms` hyväksyivät minkä tahansa positiivisen kokonaisluvun. Yli 2 147 483 647 ms:n (noin 24,8 vrk) arvolla Noden ajastin laukesi 1 ms:n kuluttua, joten terve palvelin raportoitiin `CONNECT_FAILED`-virheenä (Request timed out). Nyt liian suuri arvo on käyttövirhe (poistumiskoodi 2).
 
 ## [0.5.0] - 2026-11-02
 
